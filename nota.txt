@@ -1,0 +1,28 @@
+1- Se cadastrar no github: 
+ 
+ abrir o cmd do VSCode--
+crtl '
+
+git config --global user.name Prhuanetc
+git config --global user.email email.rhuan.etec@gmail.com
+
+--
+2- Criar um template do Expo: 
+codigo de uso único
+npx create-expo-app@latest ListaDCompra --template blank 
+
+--
+3- Entrar na pasta e conectar com o celular:
+
+cd ListaDCompra
+npm i
+
+--
+4- Iniciar o projeto
+npx expo start --localhost --android
+npx expo start
+npx expo start --clear
+
+--
+*Pacote Expo-Router:
+npx expo install expo-router react-native-safe-area-context react-native-screens expo-linking expo-constants expo-status-bar
