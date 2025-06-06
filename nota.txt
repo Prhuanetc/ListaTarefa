@@ -26,3 +26,11 @@ npx expo start --clear
 --
 *Pacote Expo-Router:
 npx expo install expo-router react-native-safe-area-context react-native-screens expo-linking expo-constants expo-status-bar
+
+
+------------------------------
+web:
+
+npm i
+npx expo install
+npx expo start --localhost --web
