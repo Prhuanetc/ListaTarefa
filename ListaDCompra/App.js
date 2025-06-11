@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Keyboard } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(new Date());
   const [selectedColor, setSelectedColor] = useState('#ffffff');
   const [showAddTask, setShowAddTask] = useState(false);
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
+  const [showTimeModal, setShowTimeModal] = useState(false);
 
   const colors = [
     '#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3',
@@ -22,8 +22,12 @@ export default function App() {
       return;
     }
 
-    const timeString = selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
+    if (hours === '' || minutes === '') {
+      Alert.alert('Erro', 'Por favor, selecione um horário');
+      return;
+    }
+
+    const timeString = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
     const textColor = getContrastColor(selectedColor);
     
     const task = {
@@ -37,21 +41,18 @@ export default function App() {
 
     setTasks([...tasks, task]);
     setNewTask('');
-    setSelectedTime(new Date());
+    setHours('');
+    setMinutes('');
     setSelectedColor('#ffffff');
     setShowAddTask(false);
+    setShowTimeModal(false);
   };
 
   const getContrastColor = (hexColor) => {
-    // Convert hex to RGB
     const r = parseInt(hexColor.substr(1, 2), 16);
     const g = parseInt(hexColor.substr(3, 2), 16);
     const b = parseInt(hexColor.substr(5, 2), 16);
-    
-    // Calculate luminance
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    
-    // Return black for light colors, white for dark colors
     return luminance > 0.5 ? '#000000' : '#ffffff';
   };
 
@@ -66,28 +67,57 @@ export default function App() {
   };
 
   const clearAllTasks = () => {
-    Alert.alert(
-      'Limpar tudo',
-      'Tem certeza que deseja apagar todas as tarefas?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpar', onPress: () => setTasks([]) }
-      ]
-    );
+    // Verifica se há tarefas
+    if (tasks.length === 0) {
+      window.alert('Não há tarefas para limpar');
+      return;
+    }
+  
+    // Confirmação antes de apagar
+    const userConfirmed = window.confirm('Tem certeza que deseja apagar todas as tarefas?');
+    
+    if (userConfirmed) {
+      setTasks([]);
+      window.alert('Todas as tarefas foram removidas');
+    }
   };
 
-  const onTimeChange = (event, selectedDate) => {
-    setShowTimePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setSelectedTime(selectedDate);
+  const handleHourChange = (text) => {
+    const numericValue = text.replace(/[^0-9]/g, '');
+    let formattedValue = numericValue;
+    
+    if (numericValue.length > 0) {
+      const num = parseInt(numericValue, 10);
+      if (num > 23) {
+        formattedValue = '23';
+      }
     }
+    
+    setHours(formattedValue);
+  };
+
+  const handleMinuteChange = (text) => {
+    const numericValue = text.replace(/[^0-9]/g, '');
+    let formattedValue = numericValue;
+    
+    if (numericValue.length > 0) {
+      const num = parseInt(numericValue, 10);
+      if (num > 59) {
+        formattedValue = '59';
+      }
+    }
+    
+    setMinutes(formattedValue);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Lista de Tarefas</Text>
-        <TouchableOpacity onPress={clearAllTasks} style={styles.clearButton}>
+        <TouchableOpacity 
+          onPress={clearAllTasks} 
+          style={styles.clearButton}
+        >
           <Icon name="trash" size={20} color="#FF5733" />
           <Text style={styles.clearText}>Limpar tudo</Text>
         </TouchableOpacity>
@@ -136,21 +166,55 @@ export default function App() {
           
           <TouchableOpacity 
             style={styles.timeButton}
-            onPress={() => setShowTimePicker(true)}
+            onPress={() => {
+              setShowTimeModal(true);
+              Keyboard.dismiss();
+            }}
           >
             <Icon name="clock" size={16} color="#555" />
             <Text style={styles.timeButtonText}>
-              {selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {hours || minutes ? `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}` : 'Selecionar horário'}
             </Text>
           </TouchableOpacity>
 
-          {showTimePicker && (
-            <DateTimePicker
-              value={selectedTime}
-              mode="time"
-              display="default"
-              onChange={onTimeChange}
-            />
+          {showTimeModal && (
+            <View style={styles.timeModal}>
+              <View style={styles.timeModalContent}>
+                <Text style={styles.timeModalTitle}>Selecione o horário</Text>
+                <View style={styles.timeInputsContainer}>
+                  <TextInput
+                    style={styles.timeInput}
+                    placeholder="HH"
+                    value={hours}
+                    onChangeText={handleHourChange}
+                    keyboardType="numeric"
+                    maxLength={2}
+                    autoFocus={true}
+                  />
+                  <Text style={styles.timeSeparator}>:</Text>
+                  <TextInput
+                    style={styles.timeInput}
+                    placeholder="MM"
+                    value={minutes}
+                    onChangeText={handleMinuteChange}
+                    keyboardType="numeric"
+                    maxLength={2}
+                  />
+                </View>
+                <TouchableOpacity 
+                  style={styles.timeConfirmButton}
+                  onPress={() => {
+                    if (hours && minutes) {
+                      setShowTimeModal(false);
+                    } else {
+                      Alert.alert('Erro', 'Preencha horas e minutos');
+                    }
+                  }}
+                >
+                  <Text style={styles.timeConfirmButtonText}>Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
 
           <ScrollView 
@@ -312,6 +376,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#555',
   },
+  timeModal: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  timeModalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  timeModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  timeInputsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  timeInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    padding: 12,
+    width: 60,
+    textAlign: 'center',
+    fontSize: 18,
+  },
+  timeSeparator: {
+    fontSize: 18,
+    marginHorizontal: 10,
+  },
+  timeConfirmButton: {
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  timeConfirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
   colorPicker: {
     marginBottom: 15,
   },
@@ -369,4 +485,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
