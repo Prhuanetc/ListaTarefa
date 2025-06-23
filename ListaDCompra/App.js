@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
-  const [selectedColor, setSelectedColor] = useState('#ffffff');
-  const [showAddTask, setShowAddTask] = useState(false);
   const [hours, setHours] = useState('');
   const [minutes, setMinutes] = useState('');
+  const [showAddTask, setShowAddTask] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
+  const [selectedColor, setSelectedColor] = useState('#FF9AA2');
 
-  const colors = [
-    '#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3',
-    '#33FFF3', '#8A2BE2', '#FF6347', '#7CFC00', '#FFD700'
-  ];
+  const colors = ['#ff2637', '#8426ff', '#2681ff', '#26ffe2', '#67ff26', '#ffa526'];
 
   const addTask = () => {
     if (newTask.trim() === '') {
@@ -43,7 +40,6 @@ export default function App() {
     setNewTask('');
     setHours('');
     setMinutes('');
-    setSelectedColor('#ffffff');
     setShowAddTask(false);
     setShowTimeModal(false);
   };
@@ -53,7 +49,7 @@ export default function App() {
     const g = parseInt(hexColor.substr(3, 2), 16);
     const b = parseInt(hexColor.substr(5, 2), 16);
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.5 ? '#000000' : '#ffffff';
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
   };
 
   const toggleTask = (id) => {
@@ -67,19 +63,22 @@ export default function App() {
   };
 
   const clearAllTasks = () => {
-    // Verifica se há tarefas
     if (tasks.length === 0) {
-      window.alert('Não há tarefas para limpar');
+      Alert.alert('Aviso', 'Não há tarefas para limpar');
       return;
     }
-  
-    // Confirmação antes de apagar
-    const userConfirmed = window.confirm('Tem certeza que deseja apagar todas as tarefas?');
-    
-    if (userConfirmed) {
-      setTasks([]);
-      window.alert('Todas as tarefas foram removidas');
-    }
+
+    Alert.alert(
+      'Limpar tudo',
+      'Tem certeza que deseja apagar todas as tarefas?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Limpar', 
+          onPress: () => setTasks([])
+        }
+      ]
+    );
   };
 
   const handleHourChange = (text) => {
@@ -88,9 +87,7 @@ export default function App() {
     
     if (numericValue.length > 0) {
       const num = parseInt(numericValue, 10);
-      if (num > 23) {
-        formattedValue = '23';
-      }
+      if (num > 23) formattedValue = '23';
     }
     
     setHours(formattedValue);
@@ -102,9 +99,7 @@ export default function App() {
     
     if (numericValue.length > 0) {
       const num = parseInt(numericValue, 10);
-      if (num > 59) {
-        formattedValue = '59';
-      }
+      if (num > 59) formattedValue = '59';
     }
     
     setMinutes(formattedValue);
@@ -112,49 +107,53 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      {/* Cabeçalho Preto */}
       <View style={styles.header}>
         <Text style={styles.title}>Lista de Tarefas</Text>
-        <TouchableOpacity 
-          onPress={clearAllTasks} 
-          style={styles.clearButton}
-        >
-          <Icon name="trash" size={20} color="#FF5733" />
-          <Text style={styles.clearText}>Limpar tudo</Text>
-        </TouchableOpacity>
+        {tasks.length > 0 && (
+          <TouchableOpacity onPress={clearAllTasks} style={styles.clearButton}>
+            <Text style={styles.clearText}>Limpar tudo</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
+      {/* Lista de Tarefas */}
       <ScrollView style={styles.taskList}>
         {tasks.map(task => (
-          <View 
-            key={task.id} 
-            style={[styles.taskItem, { backgroundColor: task.color }]}
+          <TouchableOpacity
+            key={task.id}
+            style={[styles.taskItem, { 
+              backgroundColor: task.color,
+              borderRadius: 50,
+            }]}
+            onPress={() => toggleTask(task.id)}
           >
             <TouchableOpacity 
-              style={styles.checkboxContainer}
-              onPress={() => toggleTask(task.id)}
+              onPress={(e) => {
+                e.stopPropagation();
+                deleteTask(task.id);
+              }}
+              style={[styles.deleteButton, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
             >
-              <View style={[styles.checkbox, task.completed && styles.checked]}>
-                {task.completed && <Icon name="check" size={12} color={task.textColor} />}
-              </View>
-              <View style={styles.taskTextContainer}>
-                <Text style={[styles.taskText, { color: task.textColor }, task.completed && styles.completedText]}>
-                  {task.text}
-                </Text>
-                <Text style={[styles.taskTime, { color: task.textColor }]}>
-                  {task.time}
-                </Text>
-              </View>
+              <Icon name="trash" size={18} color={task.color} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => deleteTask(task.id)}
-              style={styles.deleteButton}
-            >
-              <Icon name="trash" size={16} color={task.textColor} />
-            </TouchableOpacity>
-          </View>
+            
+            <Text style={[
+              styles.taskText, 
+              { color: task.textColor },
+              task.completed && styles.completedText
+            ]}>
+              {task.text}
+            </Text>
+            
+            <Text style={[styles.taskTime, { color: task.textColor }]}>
+              {task.time}
+            </Text>
+          </TouchableOpacity>
         ))}
       </ScrollView>
 
+      {/* Modal de Adicionar Tarefa */}
       {showAddTask && (
         <View style={styles.addTaskContainer}>
           <TextInput
@@ -162,14 +161,12 @@ export default function App() {
             placeholder="Digite a tarefa"
             value={newTask}
             onChangeText={setNewTask}
+            placeholderTextColor="#999"
           />
           
           <TouchableOpacity 
             style={styles.timeButton}
-            onPress={() => {
-              setShowTimeModal(true);
-              Keyboard.dismiss();
-            }}
+            onPress={() => setShowTimeModal(true)}
           >
             <Icon name="clock" size={16} color="#555" />
             <Text style={styles.timeButtonText}>
@@ -190,6 +187,7 @@ export default function App() {
                     keyboardType="numeric"
                     maxLength={2}
                     autoFocus={true}
+                    placeholderTextColor="#999"
                   />
                   <Text style={styles.timeSeparator}>:</Text>
                   <TextInput
@@ -199,16 +197,14 @@ export default function App() {
                     onChangeText={handleMinuteChange}
                     keyboardType="numeric"
                     maxLength={2}
+                    placeholderTextColor="#999"
                   />
                 </View>
                 <TouchableOpacity 
                   style={styles.timeConfirmButton}
                   onPress={() => {
-                    if (hours && minutes) {
-                      setShowTimeModal(false);
-                    } else {
-                      Alert.alert('Erro', 'Preencha horas e minutos');
-                    }
+                    if (hours && minutes) setShowTimeModal(false);
+                    else Alert.alert('Erro', 'Preencha horas e minutos');
                   }}
                 >
                   <Text style={styles.timeConfirmButtonText}>Confirmar</Text>
@@ -252,15 +248,13 @@ export default function App() {
         </View>
       )}
 
-      {!showAddTask && (
-        <TouchableOpacity 
-          style={styles.addButtonMain}
-          onPress={() => setShowAddTask(true)}
-        >
-          <Icon name="plus" size={20} color="white" />
-          <Text style={styles.addButtonMainText}>Adicionar Tarefa</Text>
-        </TouchableOpacity>
-      )}
+      {/* Botão de Adicionar */}
+      <TouchableOpacity 
+        style={styles.addButtonMain}
+        onPress={() => setShowAddTask(true)}
+      >
+        <Icon name="plus" size={20} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -268,107 +262,102 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    backgroundColor: '#F5F5F5',
   },
   header: {
+    backgroundColor: '#000',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
   },
   clearButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 8,
   },
   clearText: {
-    marginLeft: 5,
-    color: '#FF5733',
+    color: '#FFF',
     fontSize: 16,
   },
   taskList: {
     flex: 1,
-    marginBottom: 20,
+    paddingHorizontal: 15,
+    paddingTop: 15,
+    paddingBottom: 80,
   },
   taskItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
     marginBottom: 10,
-    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
+    elevation: 2,
   },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#ccc',
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
-  },
-  checked: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  taskTextContainer: {
-    flex: 1,
+    marginRight: 12,
   },
   taskText: {
     fontSize: 16,
-    marginBottom: 3,
+    fontWeight: '500',
+    flex: 1,
   },
   completedText: {
     textDecorationLine: 'line-through',
     opacity: 0.7,
   },
   taskTime: {
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  deleteButton: {
-    padding: 8,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10,
+    minWidth: 60,
+    textAlign: 'right',
   },
   addTaskContainer: {
     backgroundColor: 'white',
-    borderRadius: 10,
+    borderRadius: 15,
     padding: 20,
-    marginBottom: 20,
-    elevation: 3,
+    margin: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
-    padding: 12,
+    borderColor: '#DDD',
+    borderRadius: 10,
+    padding: 15,
     marginBottom: 15,
     fontSize: 16,
+    color: '#333',
   },
   timeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 15,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
+    borderColor: '#DDD',
+    borderRadius: 10,
     marginBottom: 15,
   },
   timeButtonText: {
@@ -389,8 +378,8 @@ const styles = StyleSheet.create({
   },
   timeModalContent: {
     backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
+    padding: 25,
+    borderRadius: 15,
     width: '80%',
   },
   timeModalTitle: {
@@ -398,6 +387,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#333',
   },
   timeInputsContainer: {
     flexDirection: 'row',
@@ -407,34 +397,37 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
+    borderColor: '#DDD',
+    borderRadius: 10,
     padding: 12,
-    width: 60,
+    width: 70,
     textAlign: 'center',
     fontSize: 18,
+    color: '#333',
   },
   timeSeparator: {
-    fontSize: 18,
+    fontSize: 20,
     marginHorizontal: 10,
+    color: '#555',
   },
   timeConfirmButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 6,
+    backgroundColor: '#000',
+    padding: 15,
+    borderRadius: 10,
     alignItems: 'center',
   },
   timeConfirmButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   colorPicker: {
     marginBottom: 15,
   },
   colorOption: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     marginRight: 10,
     borderWidth: 2,
     borderColor: 'transparent',
@@ -445,11 +438,12 @@ const styles = StyleSheet.create({
   addTaskButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderRadius: 6,
+    backgroundColor: '#F5F5F5',
+    padding: 15,
+    borderRadius: 10,
     flex: 1,
     marginRight: 10,
     alignItems: 'center',
@@ -459,9 +453,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 6,
+    backgroundColor: '#000',
+    padding: 15,
+    borderRadius: 10,
     flex: 1,
     alignItems: 'center',
   },
@@ -470,18 +464,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addButtonMain: {
-    flexDirection: 'row',
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 6,
+    backgroundColor: '#000',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  addButtonMainText: {
-    color: 'white',
-    fontWeight: 'bold',
-    marginLeft: 10,
-    fontSize: 16,
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
