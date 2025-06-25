@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import { HueSlider } from 'react-native-color';
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
@@ -9,9 +10,30 @@ export default function App() {
   const [minutes, setMinutes] = useState('');
   const [showAddTask, setShowAddTask] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
-  const [selectedColor, setSelectedColor] = useState('#FF9AA2');
+  const [hue, setHue] = useState(0); // 0-360 para o seletor de cor
+  const [selectedColor, setSelectedColor] = useState('#ff9a9a');
 
-  const colors = ['#ff2637', '#8426ff', '#2681ff', '#26ffe2', '#67ff26', '#ffa526'];
+  // Atualiza a cor selecionada quando o hue muda
+  useEffect(() => {
+    const hslToHex = (h, s, l) => {
+      l /= 100;
+      const a = s * Math.min(l, 1 - l) / 100;
+      const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    };
+    setSelectedColor(hslToHex(hue, 100, 80));
+  }, [hue]);
+
+  // Ordena tarefas por horário
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const timeA = parseInt(a.time.replace(':', ''));
+    const timeB = parseInt(b.time.replace(':', ''));
+    return timeA - timeB;
+  });
 
   const addTask = () => {
     if (newTask.trim() === '') {
@@ -105,6 +127,15 @@ export default function App() {
     setMinutes(formattedValue);
   };
 
+  // Componente para carregar a fonte Poppins
+  const loadFonts = async () => {
+    await Font.loadAsync({
+      'Poppins-Regular': { uri: 'https://fonts.googleapis.com/css2?family=Poppins&display=swap' },
+      'Poppins-Medium': { uri: 'https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap' },
+      'Poppins-Bold': { uri: 'https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap' }
+    });
+  };
+
   return (
     <View style={styles.container}>
       {/* Cabeçalho Preto */}
@@ -119,7 +150,7 @@ export default function App() {
 
       {/* Lista de Tarefas */}
       <ScrollView style={styles.taskList}>
-        {tasks.map(task => (
+        {sortedTasks.map(task => (
           <TouchableOpacity
             key={task.id}
             style={[styles.taskItem, { 
@@ -133,7 +164,7 @@ export default function App() {
                 e.stopPropagation();
                 deleteTask(task.id);
               }}
-              style={[styles.deleteButton, { backgroundColor: 'rgba(255,255,255,0.7)' }]}
+              style={[styles.deleteButton, { backgroundColor: 'rgba(255,255,255,0.95)' }]}
             >
               <Icon name="trash" size={18} color={task.color} />
             </TouchableOpacity>
@@ -213,23 +244,18 @@ export default function App() {
             </View>
           )}
 
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.colorPicker}
-          >
-            {colors.map(color => (
-              <TouchableOpacity
-                key={color}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color },
-                  selectedColor === color && styles.selectedColor
-                ]}
-                onPress={() => setSelectedColor(color)}
-              />
-            ))}
-          </ScrollView>
+          {/* Seletor de cor em formato de barra */}
+          <View style={styles.colorPickerContainer}>
+            <Text style={styles.colorPickerLabel}>Escolha a cor:</Text>
+            <View style={styles.colorPreview} backgroundColor={selectedColor} />
+            <HueSlider
+              style={styles.hueSlider}
+              value={hue}
+              onValueChange={setHue}
+              thumbSize={20}
+              trackHeight={25}
+            />
+          </View>
 
           <View style={styles.addTaskButtons}>
             <TouchableOpacity 
@@ -281,6 +307,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFF',
+    fontFamily: 'Poppins-Bold',
   },
   clearButton: {
     padding: 8,
@@ -288,6 +315,7 @@ const styles = StyleSheet.create({
   clearText: {
     color: '#FFF',
     fontSize: 16,
+    fontFamily: 'Poppins-Regular',
   },
   taskList: {
     flex: 1,
@@ -298,9 +326,9 @@ const styles = StyleSheet.create({
   taskItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    marginBottom: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -308,28 +336,30 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   deleteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   taskText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '500',
     flex: 1,
+    fontFamily: 'Poppins-Medium',
   },
   completedText: {
     textDecorationLine: 'line-through',
     opacity: 0.7,
   },
   taskTime: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 10,
-    minWidth: 60,
+    minWidth: 70,
     textAlign: 'right',
+    fontFamily: 'Poppins-Bold',
   },
   addTaskContainer: {
     backgroundColor: 'white',
@@ -346,24 +376,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
+    padding: 16,
+    marginBottom: 16,
+    fontSize: 18,
     color: '#333',
+    fontFamily: 'Poppins-Regular',
   },
   timeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 10,
-    marginBottom: 15,
+    marginBottom: 16,
   },
   timeButtonText: {
     marginLeft: 10,
     fontSize: 16,
     color: '#555',
+    fontFamily: 'Poppins-Regular',
   },
   timeModal: {
     position: 'absolute',
@@ -388,6 +420,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     color: '#333',
+    fontFamily: 'Poppins-Bold',
   },
   timeInputsContainer: {
     flexDirection: 'row',
@@ -399,11 +432,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 10,
-    padding: 12,
-    width: 70,
+    padding: 14,
+    width: 80,
     textAlign: 'center',
     fontSize: 18,
     color: '#333',
+    fontFamily: 'Poppins-Regular',
   },
   timeSeparator: {
     fontSize: 20,
@@ -412,7 +446,7 @@ const styles = StyleSheet.create({
   },
   timeConfirmButton: {
     backgroundColor: '#000',
-    padding: 15,
+    padding: 16,
     borderRadius: 10,
     alignItems: 'center',
   },
@@ -420,20 +454,29 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+    fontFamily: 'Poppins-Bold',
   },
-  colorPicker: {
-    marginBottom: 15,
+  colorPickerContainer: {
+    marginBottom: 20,
   },
-  colorOption: {
-    width: 40,
+  colorPickerLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontFamily: 'Poppins-Medium',
+    color: '#555',
+  },
+  colorPreview: {
+    width: '100%',
     height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#DDD',
   },
-  selectedColor: {
-    borderColor: '#333',
+  hueSlider: {
+    width: '100%',
+    height: 30,
+    borderRadius: 15,
   },
   addTaskButtons: {
     flexDirection: 'row',
@@ -442,7 +485,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: '#F5F5F5',
-    padding: 15,
+    padding: 16,
     borderRadius: 10,
     flex: 1,
     marginRight: 10,
@@ -451,10 +494,11 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#555',
     fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   addButton: {
     backgroundColor: '#000',
-    padding: 15,
+    padding: 16,
     borderRadius: 10,
     flex: 1,
     alignItems: 'center',
@@ -462,6 +506,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   addButtonMain: {
     backgroundColor: '#000',
