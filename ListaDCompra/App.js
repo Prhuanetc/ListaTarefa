@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import { HueSlider } from 'react-native-color';
+import { Svg, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
@@ -10,30 +10,31 @@ export default function App() {
   const [minutes, setMinutes] = useState('');
   const [showAddTask, setShowAddTask] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
-  const [hue, setHue] = useState(0); // 0-360 para o seletor de cor
+  const [huePosition, setHuePosition] = useState(0);
   const [selectedColor, setSelectedColor] = useState('#ff9a9a');
 
-  // Atualiza a cor selecionada quando o hue muda
-  useEffect(() => {
-    const hslToHex = (h, s, l) => {
-      l /= 100;
-      const a = s * Math.min(l, 1 - l) / 100;
-      const f = n => {
-        const k = (n + h / 30) % 12;
-        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-        return Math.round(255 * color).toString(16).padStart(2, '0');
-      };
-      return `#${f(0)}${f(8)}${f(4)}`;
-    };
-    setSelectedColor(hslToHex(hue, 100, 80));
-  }, [hue]);
-
-  // Ordena tarefas por horário
-  const sortedTasks = [...tasks].sort((a, b) => {
-    const timeA = parseInt(a.time.replace(':', ''));
-    const timeB = parseInt(b.time.replace(':', ''));
-    return timeA - timeB;
-  });
+  // Converte posição do slider para cor HEX
+  const hueToHex = (position) => {
+    const h = Math.round((position / 300) * 360);
+    const s = 100;
+    const l = 80;
+    
+    const c = (1 - Math.abs(2 * l / 100 - 1)) * s / 100;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = l / 100 - c / 2;
+    
+    let r, g, b;
+    
+    if (h >= 0 && h < 60) { [r, g, b] = [c, x, 0] }
+    else if (h < 120) { [r, g, b] = [x, c, 0] }
+    else if (h < 180) { [r, g, b] = [0, c, x] }
+    else if (h < 240) { [r, g, b] = [0, x, c] }
+    else if (h < 300) { [r, g, b] = [x, 0, c] }
+    else { [r, g, b] = [c, 0, x] }
+    
+    const toHex = (n) => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
 
   const addTask = () => {
     if (newTask.trim() === '') {
@@ -58,7 +59,7 @@ export default function App() {
       completed: false
     };
 
-    setTasks([...tasks, task]);
+    setTasks([...tasks, task].sort((a, b) => a.time.localeCompare(b.time)));
     setNewTask('');
     setHours('');
     setMinutes('');
@@ -95,10 +96,7 @@ export default function App() {
       'Tem certeza que deseja apagar todas as tarefas?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Limpar', 
-          onPress: () => setTasks([])
-        }
+        { text: 'Limpar', onPress: () => setTasks([]) }
       ]
     );
   };
@@ -127,15 +125,6 @@ export default function App() {
     setMinutes(formattedValue);
   };
 
-  // Componente para carregar a fonte Poppins
-  const loadFonts = async () => {
-    await Font.loadAsync({
-      'Poppins-Regular': { uri: 'https://fonts.googleapis.com/css2?family=Poppins&display=swap' },
-      'Poppins-Medium': { uri: 'https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap' },
-      'Poppins-Bold': { uri: 'https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap' }
-    });
-  };
-
   return (
     <View style={styles.container}>
       {/* Cabeçalho Preto */}
@@ -150,7 +139,7 @@ export default function App() {
 
       {/* Lista de Tarefas */}
       <ScrollView style={styles.taskList}>
-        {sortedTasks.map(task => (
+        {tasks.map(task => (
           <TouchableOpacity
             key={task.id}
             style={[styles.taskItem, { 
@@ -244,17 +233,42 @@ export default function App() {
             </View>
           )}
 
-          {/* Seletor de cor em formato de barra */}
+          {/* Seletor de Cor Personalizado */}
           <View style={styles.colorPickerContainer}>
             <Text style={styles.colorPickerLabel}>Escolha a cor:</Text>
-            <View style={styles.colorPreview} backgroundColor={selectedColor} />
-            <HueSlider
-              style={styles.hueSlider}
-              value={hue}
-              onValueChange={setHue}
-              thumbSize={20}
-              trackHeight={25}
-            />
+            <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
+            
+            <View style={styles.sliderContainer}>
+              <Svg height="30" width="100%">
+                <Defs>
+                  <LinearGradient id="hueSlider" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <Stop offset="0%" stopColor="#FF0000" />
+                    <Stop offset="16.67%" stopColor="#FFFF00" />
+                    <Stop offset="33.33%" stopColor="#00FF00" />
+                    <Stop offset="50%" stopColor="#00FFFF" />
+                    <Stop offset="66.67%" stopColor="#0000FF" />
+                    <Stop offset="83.33%" stopColor="#FF00FF" />
+                    <Stop offset="100%" stopColor="#FF0000" />
+                  </LinearGradient>
+                </Defs>
+                <Rect
+                  x="0" y="0" width="100%" height="30"
+                  fill="url(#hueSlider)"
+                  rx="15" ry="15"
+                />
+              </Svg>
+              
+              <View 
+                style={[styles.sliderThumb, { left: `${(huePosition / 300) * 100}%` }]}
+                onStartShouldSetResponder={() => true}
+                onMoveShouldSetResponder={() => true}
+                onResponderMove={(e) => {
+                  const newPosition = Math.min(300, Math.max(0, e.nativeEvent.locationX));
+                  setHuePosition(newPosition);
+                  setSelectedColor(hueToHex(newPosition));
+                }}
+              />
+            </View>
           </View>
 
           <View style={styles.addTaskButtons}>
@@ -307,7 +321,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFF',
-    fontFamily: 'Poppins-Bold',
   },
   clearButton: {
     padding: 8,
@@ -315,7 +328,6 @@ const styles = StyleSheet.create({
   clearText: {
     color: '#FFF',
     fontSize: 16,
-    fontFamily: 'Poppins-Regular',
   },
   taskList: {
     flex: 1,
@@ -326,9 +338,9 @@ const styles = StyleSheet.create({
   taskItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 18,
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -336,9 +348,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   deleteButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -347,7 +359,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '500',
     flex: 1,
-    fontFamily: 'Poppins-Medium',
   },
   completedText: {
     textDecorationLine: 'line-through',
@@ -359,7 +370,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     minWidth: 70,
     textAlign: 'right',
-    fontFamily: 'Poppins-Bold',
   },
   addTaskContainer: {
     backgroundColor: 'white',
@@ -380,7 +390,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 18,
     color: '#333',
-    fontFamily: 'Poppins-Regular',
   },
   timeButton: {
     flexDirection: 'row',
@@ -395,7 +404,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     color: '#555',
-    fontFamily: 'Poppins-Regular',
   },
   timeModal: {
     position: 'absolute',
@@ -420,7 +428,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     color: '#333',
-    fontFamily: 'Poppins-Bold',
   },
   timeInputsContainer: {
     flexDirection: 'row',
@@ -437,7 +444,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
     color: '#333',
-    fontFamily: 'Poppins-Regular',
   },
   timeSeparator: {
     fontSize: 20,
@@ -454,7 +460,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
-    fontFamily: 'Poppins-Bold',
   },
   colorPickerContainer: {
     marginBottom: 20,
@@ -462,7 +467,6 @@ const styles = StyleSheet.create({
   colorPickerLabel: {
     fontSize: 16,
     marginBottom: 8,
-    fontFamily: 'Poppins-Medium',
     color: '#555',
   },
   colorPreview: {
@@ -473,10 +477,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDD',
   },
-  hueSlider: {
-    width: '100%',
+  sliderContainer: {
     height: 30,
-    borderRadius: 15,
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  sliderThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'white',
+    borderWidth: 2,
+    borderColor: '#333',
+    position: 'absolute',
+    top: 5,
+    marginLeft: -10,
   },
   addTaskButtons: {
     flexDirection: 'row',
@@ -494,7 +509,6 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#555',
     fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
   },
   addButton: {
     backgroundColor: '#000',
@@ -506,7 +520,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: 'white',
     fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
   },
   addButtonMain: {
     backgroundColor: '#000',
